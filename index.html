@@ -1,0 +1,342 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { ArrowDown, Instagram, Mail, Phone, ArrowUpRight, Menu, X, Linkedin } from 'lucide-react';
+
+// --- Custom Hooks & Utility Components ---
+
+// Hook for scroll-triggered fade-in animations
+const useElementOnScreen = (options) => {
+  const containerRef = useRef(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+      const [entry] = entries;
+      if (entry.isIntersecting) {
+        setIsVisible(true);
+        observer.unobserve(entry.target);
+      }
+    }, options);
+
+    if (containerRef.current) observer.observe(containerRef.current);
+    return () => {
+      if (containerRef.current) observer.unobserve(containerRef.current);
+    };
+  }, [containerRef, options]);
+
+  return [containerRef, isVisible];
+};
+
+const Reveal = ({ children, delay = 0, className = '' }) => {
+  const [ref, isVisible] = useElementOnScreen({ threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+  
+  return (
+    <div
+      ref={ref}
+      style={{ transitionDelay: `${delay}ms` }}
+      className={`transition-all duration-1000 ease-out ${
+        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
+      } ${className}`}
+    >
+      {children}
+    </div>
+  );
+};
+
+// --- Main Application ---
+
+export default function App() {
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Handle Navbar background on scroll
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollTo = (id) => {
+    setMobileMenuOpen(false);
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  return (
+    <div className="font-sans text-[#1A332B] bg-[#F7F5F0] overflow-x-hidden selection:bg-[#1A332B] selection:text-[#F7F5F0]">
+      {/* --- Global Styles --- */}
+      <style dangerouslySetInnerHTML={{__html: `
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+        
+        body {
+          font-family: 'Plus Jakarta Sans', sans-serif;
+          scroll-behavior: smooth;
+        }
+
+        /* Subtle animated background grid/lines for About section */
+        .bg-growth-pattern {
+          background-image: url("data:image/svg+xml,%3Csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 100 Q 250 50 500 150 T 1000 50' fill='none' stroke='%231A332B' stroke-width='1' stroke-opacity='0.05' /%3E%3Cpath d='M0 200 Q 300 100 600 200 T 1200 100' fill='none' stroke='%231A332B' stroke-width='1' stroke-opacity='0.05' /%3E%3C/svg%3E");
+          background-size: cover;
+          background-position: center;
+        }
+
+        .text-blend {
+          mix-blend-mode: overlay;
+          color: rgba(255,255,255,0.9);
+        }
+      `}} />
+
+      {/* --- Navigation --- */}
+      <nav className={`fixed w-full z-50 transition-all duration-500 ${isScrolled ? 'bg-[#F7F5F0]/90 backdrop-blur-md py-4 shadow-sm' : 'bg-transparent py-6'}`}>
+        <div className="max-w-7xl mx-auto px-6 md:px-12 flex justify-between items-center">
+          <div 
+            onClick={() => scrollTo('hero')}
+            className={`cursor-pointer font-bold tracking-widest text-lg z-50 transition-colors duration-300 ${!isScrolled && !mobileMenuOpen ? 'text-white' : 'text-[#1A332B]'}`}
+          >
+            PALMGROWW.
+          </div>
+          
+          {/* Desktop Nav */}
+          <div className={`hidden md:flex space-x-8 text-sm uppercase tracking-widest font-medium transition-colors duration-300 ${!isScrolled ? 'text-white/80 hover:text-white' : 'text-[#1A332B]/70 hover:text-[#1A332B]'}`}>
+            <button onClick={() => scrollTo('about')} className="hover:opacity-60 transition-opacity">About</button>
+            <button onClick={() => scrollTo('founders')} className="hover:opacity-60 transition-opacity">Founders</button>
+            <button onClick={() => scrollTo('contact')} className="hover:opacity-60 transition-opacity">Contact</button>
+          </div>
+
+          {/* Mobile Menu Toggle */}
+          <button 
+            className="md:hidden z-50"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? (
+              <X className="text-[#1A332B] w-6 h-6" />
+            ) : (
+              <Menu className={`w-6 h-6 transition-colors ${!isScrolled ? 'text-white' : 'text-[#1A332B]'}`} />
+            )}
+          </button>
+        </div>
+
+        {/* Mobile Nav Overlay */}
+        <div className={`fixed inset-0 bg-[#F7F5F0] z-40 flex flex-col items-center justify-center space-y-8 transition-transform duration-500 ease-in-out ${mobileMenuOpen ? 'translate-y-0' : '-translate-y-full'}`}>
+          <button onClick={() => scrollTo('about')} className="text-2xl tracking-widest text-[#1A332B]">ABOUT</button>
+          <button onClick={() => scrollTo('founders')} className="text-2xl tracking-widest text-[#1A332B]">FOUNDERS</button>
+          <button onClick={() => scrollTo('contact')} className="text-2xl tracking-widest text-[#1A332B]">CONTACT</button>
+        </div>
+      </nav>
+
+      {/* --- 1. Hero Section --- */}
+      <section id="hero" className="relative h-screen w-full flex items-center justify-center overflow-hidden">
+        {/* Background Image & Overlays */}
+        <div className="absolute inset-0 w-full h-full">
+          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-[#F7F5F0] z-10" />
+          <img 
+            src="https://images.unsplash.com/photo-1505852903341-fc8d3db10436?q=80&w=2500&auto=format&fit=crop" 
+            alt="Beautiful minimal palm tree against clear sky" 
+            className="w-full h-full object-cover object-center scale-105 animate-[pulse_20s_ease-in-out_infinite_alternate]"
+          />
+        </div>
+
+        {/* Content */}
+        <div className="relative z-20 text-center flex flex-col items-center w-full px-4">
+          <Reveal delay={200}>
+            {/* Using a pseudo-blend effect for the text to interact with the sky/tree */}
+            <h1 className="text-6xl md:text-[9rem] lg:text-[12rem] font-bold tracking-tighter text-blend leading-none select-none mix-blend-overlay opacity-90">
+              PALMGROWW
+            </h1>
+          </Reveal>
+          
+          <Reveal delay={600}>
+            <p className="mt-6 md:mt-2 text-sm md:text-lg tracking-[0.2em] md:tracking-[0.3em] text-white/90 uppercase font-light">
+              Where Creators Groww & Brands Connect
+            </p>
+          </Reveal>
+        </div>
+
+        {/* Scroll Indicator */}
+        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center animate-bounce">
+          <span className="text-white/60 text-xs tracking-widest uppercase mb-2">Scroll</span>
+          <ArrowDown className="text-white/80 w-5 h-5" strokeWidth={1.5} />
+        </div>
+      </section>
+
+      {/* --- 2. About Section --- */}
+      <section id="about" className="relative py-32 md:py-48 bg-gradient-to-b from-[#F7F5F0] to-[#E8F0F2] overflow-hidden">
+        <div className="absolute inset-0 bg-growth-pattern opacity-60 pointer-events-none" />
+        
+        <div className="max-w-5xl mx-auto px-6 md:px-12 relative z-10">
+          <Reveal>
+            <h2 className="text-xs md:text-sm uppercase tracking-[0.3em] text-[#1A332B]/50 font-semibold mb-8">
+              The Agency
+            </h2>
+          </Reveal>
+          
+          <Reveal delay={200}>
+            <h3 className="text-3xl md:text-5xl lg:text-6xl leading-[1.2] font-light text-[#1A332B]">
+              Palmgroww is a modern influencer marketing agency connecting creators and brands through <span className="font-semibold italic">data-driven</span>, authentic, and performance-focused collaborations.
+            </h3>
+          </Reveal>
+          
+          <Reveal delay={400}>
+            <p className="mt-8 text-lg md:text-xl text-[#1A332B]/70 max-w-3xl font-light leading-relaxed">
+              We help creators grow, earn, and build long-term partnerships while helping brands reach the exact right audience with surgical precision. Rooted in authentic connection, driven by scalable growth.
+            </p>
+          </Reveal>
+
+          {/* Statistics */}
+          <div className="mt-24 grid grid-cols-2 md:grid-cols-2 gap-12 md:gap-24 border-t border-[#1A332B]/10 pt-16">
+            <Reveal delay={100}>
+              <div className="group">
+                <div className="text-5xl md:text-7xl font-bold text-[#1A332B] tracking-tighter group-hover:-translate-y-2 transition-transform duration-500">
+                  5000<span className="text-[#1A332B]/40">+</span>
+                </div>
+                <div className="mt-4 text-xs md:text-sm uppercase tracking-widest text-[#1A332B]/60 font-medium">
+                  Creators & Influencers
+                </div>
+              </div>
+            </Reveal>
+            
+            <Reveal delay={300}>
+              <div className="group">
+                <div className="text-5xl md:text-7xl font-bold text-[#1A332B] tracking-tighter group-hover:-translate-y-2 transition-transform duration-500">
+                  100<span className="text-[#1A332B]/40">+</span>
+                </div>
+                <div className="mt-4 text-xs md:text-sm uppercase tracking-widest text-[#1A332B]/60 font-medium">
+                  Brand Partners
+                </div>
+              </div>
+            </Reveal>
+          </div>
+        </div>
+      </section>
+
+      {/* --- 3. Founders Section --- */}
+      <section id="founders" className="py-32 md:py-48 bg-[#E8F0F2]">
+        <div className="max-w-7xl mx-auto px-6 md:px-12">
+          <Reveal>
+            <div className="flex flex-col items-center text-center mb-24">
+              <h2 className="text-xs md:text-sm uppercase tracking-[0.3em] text-[#1A332B]/50 font-semibold mb-4">
+                Leadership
+              </h2>
+              <h3 className="text-4xl md:text-5xl font-light text-[#1A332B]">
+                Meet the Founders
+              </h3>
+            </div>
+          </Reveal>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-16 md:gap-24">
+            {/* Founder 1: Mohit */}
+            <Reveal delay={200}>
+              <div className="group flex flex-col items-center md:items-start">
+                <div className="w-full aspect-[4/5] overflow-hidden rounded-sm bg-[#1A332B]/5 relative mb-8">
+                  <div className="absolute inset-0 bg-[#1A332B]/10 group-hover:bg-transparent transition-colors duration-700 z-10" />
+                  <img 
+                    src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=800&auto=format&fit=crop" 
+                    alt="Mohit - Founder" 
+                    className="w-full h-full object-cover object-center grayscale group-hover:grayscale-0 group-hover:scale-105 transition-all duration-1000 ease-out"
+                  />
+                </div>
+                <h4 className="text-3xl font-medium text-[#1A332B]">Mohit</h4>
+                <p className="mt-4 text-[#1A332B]/70 font-light italic text-lg text-center md:text-left">
+                  "Building bridges between raw talent and visionary brands. We don't just follow trends, we cultivate them."
+                </p>
+              </div>
+            </Reveal>
+
+            {/* Founder 2: Divik */}
+            <Reveal delay={400}>
+              <div className="group flex flex-col items-center md:items-start md:mt-24">
+                <div className="w-full aspect-[4/5] overflow-hidden rounded-sm bg-[#1A332B]/5 relative mb-8">
+                  <div className="absolute inset-0 bg-[#1A332B]/10 group-hover:bg-transparent transition-colors duration-700 z-10" />
+                  <img 
+                    src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=800&auto=format&fit=crop" 
+                    alt="Divik - Founder" 
+                    className="w-full h-full object-cover object-center grayscale group-hover:grayscale-0 group-hover:scale-105 transition-all duration-1000 ease-out"
+                  />
+                </div>
+                <h4 className="text-3xl font-medium text-[#1A332B]">Divik</h4>
+                <p className="mt-4 text-[#1A332B]/70 font-light italic text-lg text-center md:text-left">
+                  "Data is the soil, creativity is the seed. True growth happens when you perfect the environment for both."
+                </p>
+              </div>
+            </Reveal>
+          </div>
+        </div>
+      </section>
+
+      {/* --- 4. Contact Section & Footer --- */}
+      <section id="contact" className="py-32 bg-[#1A332B] text-[#F7F5F0]">
+        <div className="max-w-7xl mx-auto px-6 md:px-12">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
+            
+            {/* Contact Info */}
+            <div>
+              <Reveal>
+                <h2 className="text-5xl md:text-7xl font-light mb-12">
+                  Let's Groww<br/>Together.
+                </h2>
+              </Reveal>
+              
+              <div className="space-y-8">
+                <Reveal delay={200}>
+                  <a href="mailto:hello@palmgroww.com" className="group flex items-center space-x-6 hover:text-white transition-colors pb-6 border-b border-white/10 w-fit md:w-full max-w-md">
+                    <Mail className="w-6 h-6 opacity-50 group-hover:opacity-100 transition-opacity" />
+                    <span className="text-xl md:text-2xl font-light tracking-wide">hello@palmgroww.com</span>
+                    <ArrowUpRight className="w-5 h-5 opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300" />
+                  </a>
+                </Reveal>
+
+                <Reveal delay={300}>
+                  <a href="tel:+1234567890" className="group flex items-center space-x-6 hover:text-white transition-colors pb-6 border-b border-white/10 w-fit md:w-full max-w-md">
+                    <Phone className="w-6 h-6 opacity-50 group-hover:opacity-100 transition-opacity" />
+                    <span className="text-xl md:text-2xl font-light tracking-wide">+1 (555) 000-0000</span>
+                    <ArrowUpRight className="w-5 h-5 opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300" />
+                  </a>
+                </Reveal>
+              </div>
+
+              {/* Socials */}
+              <Reveal delay={400}>
+                <div className="mt-16 flex space-x-8">
+                  <a href="#" className="p-4 rounded-full border border-white/20 hover:bg-white hover:text-[#1A332B] transition-all duration-300">
+                    <Instagram className="w-6 h-6" />
+                  </a>
+                  <a href="#" className="p-4 rounded-full border border-white/20 hover:bg-white hover:text-[#1A332B] transition-all duration-300">
+                    <Linkedin className="w-6 h-6" />
+                  </a>
+                </div>
+              </Reveal>
+            </div>
+
+            {/* Aesthetic Visual Element */}
+            <Reveal delay={500} className="hidden lg:flex justify-end">
+              <div className="w-full max-w-md aspect-square rounded-full border border-white/10 flex items-center justify-center relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-tr from-[#1A332B] to-[#2C5248] opacity-50 group-hover:opacity-80 transition-opacity duration-1000" />
+                <div className="absolute inset-4 rounded-full border border-white/5 animate-[spin_60s_linear_infinite]" />
+                <div className="text-center relative z-10">
+                  <div className="text-3xl font-bold tracking-widest text-white/90">PALMGROWW</div>
+                  <div className="text-xs tracking-[0.3em] text-white/50 mt-2 uppercase">Agency</div>
+                </div>
+              </div>
+            </Reveal>
+
+          </div>
+
+          {/* Minimal Footer */}
+          <Reveal delay={600}>
+            <footer className="mt-32 pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center text-sm text-white/40 uppercase tracking-widest">
+              <p>&copy; {new Date().getFullYear()} Palmgroww. All rights reserved.</p>
+              <div className="mt-4 md:mt-0 flex space-x-8">
+                <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
+                <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
+              </div>
+            </footer>
+          </Reveal>
+        </div>
+      </section>
+
+    </div>
+  );
+}
