@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Snake vs Eagles</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      overflow: hidden;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+
+    body.game-active {
+      cursor: none;
+    }
+
+    .home-screen {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 30000;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    }
+
+    .home-screen.hidden {
+      display: none;
+    }
+
+    .home-screen h1 {
+      color: #fff;
+      font-size: 48px;
+      margin-bottom: 40px;
+      text-shadow: 0 0 30px rgba(74, 222, 128, 0.4);
+    }
+
+    .home-screen .name-input {
+      width: 280px;
+      padding: 14px 20px;
+      font-size: 18px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 12px;
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .home-screen .name-input::placeholder {
+      color: rgba(255,255,255,0.5);
+    }
+
+    .home-screen .play-btn {
+      padding: 16px 48px;
+      font-size: 22px;
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 600;
+      box-shadow: 0 4px 20px rgba(34,197,94,0.4);
+      margin-bottom: 50px;
+    }
+
+    .home-screen .play-btn:hover {
+      transform: scale(1.05);
+    }
+
+    .leaderboard {
+      background: rgba(0,0,0,0.3);
+      border-radius: 16px;
+      padding: 24px 32px;
+      min-width: 320px;
+    }
+
+    .leaderboard h2 {
+      color: rgba(255,255,255,0.9);
+      font-size: 20px;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    .leaderboard-item {
+      display: flex;
+      justify-content: space-between;
+      color: rgba(255,255,255,0.8);
+      padding: 8px 0;
+      font-size: 16px;
+    }
+
+    .leaderboard-item.empty {
+      color: rgba(255,255,255,0.4);
+      font-style: italic;
+    }
+
+    .game-screen {
+      display: none;
+    }
+
+    .game-screen.active {
+      display: block;
+    }
+
+    .snake-container {
+      position: fixed;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    .snake-segment {
+      position: absolute;
+      border-radius: 50%;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      transition: none;
+    }
+
+    .snake-head {
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.4);
+    }
+
+    .snake-head::before {
+      content: '';
+      position: absolute;
+      top: 25%;
+      left: 25%;
+      width: 4px;
+      height: 4px;
+      background: #0f172a;
+      border-radius: 50%;
+    }
+
+    .snake-head::after {
+      content: '';
+      position: absolute;
+      top: 25%;
+      right: 25%;
+      width: 4px;
+      height: 4px;
+      background: #0f172a;
+      border-radius: 50%;
+    }
+
+    .snake-body {
+      background: #22c55e; /* Fallback; overridden by JS */
+    }
+
+    .cursor-dot {
+      position: fixed;
+      width: 8px;
+      height: 8px;
+      background: rgba(255,255,255,0.9);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 10000;
+      box-shadow: 0 0 12px rgba(255,255,255,0.6);
+    }
+
+    .eagle {
+      position: fixed;
+      pointer-events: auto;
+      z-index: 9998;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+
+    .eagle.normal {
+      width: 48px;
+      height: 48px;
+    }
+
+    .eagle.big {
+      width: 72px;
+      height: 72px;
+    }
+
+    .enemy {
+      position: fixed;
+      pointer-events: auto;
+      z-index: 9998;
+      cursor: pointer;
+    }
+
+    .enemy.honey-badger { width: 44px; height: 44px; }
+    .enemy.wild-pig { width: 50px; height: 50px; }
+    .enemy.fox { width: 46px; height: 46px; }
+    .enemy.cat { width: 48px; height: 48px; }
+
+    .enemy svg {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
+    }
+
+    .eagle svg {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
+    }
+
+    .hint {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255,255,255,0.5);
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      text-align: center;
+      z-index: 100;
+    }
+
+    .score {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      color: rgba(255,255,255,0.8);
+      font-size: 18px;
+      font-weight: 600;
+      z-index: 100;
+    }
+
+    .level-display {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      color: rgba(255,255,255,0.8);
+      font-size: 18px;
+      font-weight: 600;
+      z-index: 100;
+    }
+
+    .game-over {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 20000;
+      cursor: default;
+    }
+
+    .game-over.show {
+      display: flex;
+    }
+
+    .game-over h2 {
+      color: #ef4444;
+      font-size: 42px;
+      margin-bottom: 16px;
+      text-shadow: 0 0 20px rgba(239,68,68,0.5);
+    }
+
+    .game-over p {
+      color: rgba(255,255,255,0.9);
+      font-size: 20px;
+      margin-bottom: 16px;
+    }
+
+    .game-over .buttons {
+      display: flex;
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .game-over button {
+      padding: 14px 32px;
+      font-size: 18px;
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 600;
+      box-shadow: 0 4px 15px rgba(34,197,94,0.4);
+    }
+
+    .game-over button.secondary {
+      background: linear-gradient(135deg, #64748b, #475569);
+    }
+
+    .game-over button:hover {
+      transform: scale(1.05);
+    }
+
+    .menu-btn {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.2);
+      border: 2px solid rgba(255,255,255,0.4);
+      color: #fff;
+      font-size: 20px;
+      cursor: pointer;
+      z-index: 20001;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .menu-btn:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    .pause-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 19000;
+      cursor: default;
+    }
+
+    .pause-overlay.show {
+      display: flex;
+    }
+
+    .pause-overlay h2 {
+      color: #fff;
+      font-size: 36px;
+      margin-bottom: 12px;
+    }
+
+    .pause-overlay p {
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+
+    .pause-overlay .buttons {
+      display: flex;
+      gap: 16px;
+    }
+
+    .pause-overlay button {
+      padding: 14px 32px;
+      font-size: 18px;
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .pause-overlay button:hover {
+      transform: scale(1.05);
+    }
+
+    .pause-overlay button.secondary {
+      background: linear-gradient(135deg, #64748b, #475569);
+    }
+  </style>
+</head>
+<body>
+  <div class="home-screen" id="homeScreen">
+    <h1>Snake vs Eagles</h1>
+    <input type="text" class="name-input" id="nameInput" placeholder="Enter your name" maxlength="20">
+    <button class="play-btn" id="playBtn">Play</button>
+    <div class="leaderboard">
+      <h2>Top 5 Scores</h2>
+      <div id="leaderboardList">
+        <div class="leaderboard-item empty">No scores yet</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="game-screen" id="gameScreen">
+    <button class="menu-btn" id="menuBtn" title="Pause (ESC)">☰</button>
+    <div class="cursor-dot" id="cursor"></div>
+    <div class="snake-container" id="snakeContainer"></div>
+    <div class="score" id="score">Eagles defeated: 0</div>
+    <div class="level-display" id="levelDisplay">Level 1</div>
+    <p class="hint">Body kills enemies! Head-grab kills snake. Cat has 2 lives!</p>
+
+    <div class="pause-overlay" id="pauseOverlay">
+      <h2>Paused</h2>
+      <p>Press ESC or click Resume to continue</p>
+      <div class="buttons">
+        <button id="resumeBtn">Resume</button>
+        <button id="pauseHomeBtn" class="secondary">Home</button>
+      </div>
+    </div>
+
+    <div class="game-over" id="gameOver">
+      <h2>Snake captured!</h2>
+      <p id="finalScore">Eagles defeated: 0</p>
+      <div class="buttons">
+        <button id="restartBtn">Try Again</button>
+        <button id="homeBtn" class="secondary">Home</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const LEADERBOARD_KEY = 'snakeEaglesLeaderboard';
+    const SNAKE_COLORS = [
+      { head: 'linear-gradient(135deg, #4ade80 0%, #22c55e 50%, #16a34a 100%)', body: 'linear-gradient(180deg, #22c55e 0%, #15803d 100%)' },
+      { head: 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #2563eb 100%)', body: 'linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%)' },
+      { head: 'linear-gradient(135deg, #f472b6 0%, #ec4899 50%, #db2777 100%)', body: 'linear-gradient(180deg, #ec4899 0%, #be185d 100%)' },
+      { head: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%)', body: 'linear-gradient(180deg, #f59e0b 0%, #b45309 100%)' },
+      { head: 'linear-gradient(135deg, #a78bfa 0%, #8b5cf6 50%, #7c3aed 100%)', body: 'linear-gradient(180deg, #8b5cf6 0%, #6d28d9 100%)' },
+      { head: 'linear-gradient(135deg, #2dd4bf 0%, #14b8a6 50%, #0d9488 100%)', body: 'linear-gradient(180deg, #14b8a6 0%, #0f766e 100%)' },
+    ];
+
+    const snakeContainer = document.getElementById('snakeContainer');
+    const cursorDot = document.getElementById('cursor');
+    const scoreEl = document.getElementById('score');
+    const levelEl = document.getElementById('levelDisplay');
+    const gameOverEl = document.getElementById('gameOver');
+    const finalScoreEl = document.getElementById('finalScore');
+    const restartBtn = document.getElementById('restartBtn');
+    const homeBtn = document.getElementById('homeBtn');
+    const homeScreen = document.getElementById('homeScreen');
+    const gameScreen = document.getElementById('gameScreen');
+    const nameInput = document.getElementById('nameInput');
+    const playBtn = document.getElementById('playBtn');
+    const leaderboardList = document.getElementById('leaderboardList');
+    const menuBtn = document.getElementById('menuBtn');
+    const pauseOverlay = document.getElementById('pauseOverlay');
+    const resumeBtn = document.getElementById('resumeBtn');
+    const pauseHomeBtn = document.getElementById('pauseHomeBtn');
+    
+    const baseSize = 16;
+    const headSize = baseSize * 1.5;
+    let segmentCount = 8;
+    let gameRunning = true;
+    let gamePaused = false;
+    let eaglesDefeated = 0;
+    let playerName = 'Player';
+    let snakeColors = SNAKE_COLORS[0];
+    let currentLevel = 1;
+    
+    const positions = [];
+    const enemies = [];
+    let targetX = 0, targetY = 0;
+    let cursorX = 0, cursorY = 0;
+    let spawnInterval;
+
+    const eagleSvg = `<svg viewBox="0 0 64 64"><path d="M32 8 L8 32 L20 36 L16 48 L32 40 L48 48 L44 36 L56 32 Z" fill="#4a3c2e"/><path d="M32 12 L28 28 L32 24 L36 28 Z" fill="#2d1f14"/><ellipse cx="32" cy="30" rx="6" ry="8" fill="#6B5344"/><path d="M4 28 Q20 20 32 24 Q44 20 60 28" stroke="#5D4E37" stroke-width="3" fill="none"/></svg>`;
+    const honeyBadgerSvg = `<svg viewBox="0 0 64 64"><ellipse cx="32" cy="36" rx="18" ry="14" fill="#2d2d2d"/><ellipse cx="32" cy="32" rx="12" ry="10" fill="#1a1a1a"/><path d="M20 28 L28 24 L36 24 L44 28" stroke="#4a4a4a" stroke-width="2" fill="none"/><ellipse cx="26" cy="30" rx="3" ry="2" fill="#fff"/><ellipse cx="38" cy="30" rx="3" ry="2" fill="#fff"/></svg>`;
+    const wildPigSvg = `<svg viewBox="0 0 64 64"><ellipse cx="32" cy="38" rx="20" ry="14" fill="#8B7355"/><ellipse cx="32" cy="34" rx="14" ry="10" fill="#6B5344"/><circle cx="18" cy="28" r="4" fill="#5D4E37"/><circle cx="46" cy="28" r="4" fill="#5D4E37"/><path d="M44 24 L52 20" stroke="#6B5344" stroke-width="3" fill="none"/><ellipse cx="28" cy="32" rx="2" ry="2" fill="#2d1f14"/><ellipse cx="36" cy="32" rx="2" ry="2" fill="#2d1f14"/></svg>`;
+    const foxSvg = `<svg viewBox="0 0 64 64"><path d="M32 8 L48 36 L40 44 L32 40 L24 44 L16 36 Z" fill="#e07c3c"/><ellipse cx="32" cy="36" rx="12" ry="14" fill="#d2691e"/><path d="M20 20 L12 28 M44 20 L52 28" stroke="#c45a1a" stroke-width="3" fill="none"/><ellipse cx="28" cy="34" rx="2" ry="2" fill="#1a1a1a"/><ellipse cx="36" cy="34" rx="2" ry="2" fill="#1a1a1a"/><path d="M32 40 L30 48 L34 48 Z" fill="#1a1a1a"/></svg>`;
+    const catSvg = `<svg viewBox="0 0 64 64"><path d="M32 4 L40 24 L52 20 L48 36 L60 40 L44 44 L48 56 L32 48 L16 56 L20 44 L4 40 L16 36 L12 20 L24 24 Z" fill="#4a4a4a"/><ellipse cx="32" cy="36" rx="14" ry="12" fill="#2d2d2d"/><path d="M18 24 L24 20 M46 24 L40 20" stroke="#1a1a1a" stroke-width="2" fill="none"/><ellipse cx="26" cy="34" rx="3" ry="3" fill="#fbbf24"/><ellipse cx="38" cy="34" rx="3" ry="3" fill="#fbbf24"/><path d="M32 40 L30 46 L34 46 Z" fill="#1a1a1a"/></svg>`;
+
+    function getLevel(score) {
+      return Math.floor(score / 5) + 1;
+    }
+
+    function getSpawnInterval() {
+      const baseInterval = 4000;
+      const reduction = (currentLevel - 1) * 300;
+      const minInterval = 1500;
+      return Math.max(minInterval, baseInterval - reduction - Math.min(eaglesDefeated * 15, 800));
+    }
+
+    function getEagleSpeed(isBig) {
+      const levelBonus = (currentLevel - 1) * 0.4;
+      return isBig ? 2.2 + levelBonus + Math.random() * 0.8 : 1.8 + levelBonus + Math.random() * 0.7;
+    }
+
+    function getSpawnCount() {
+      return 1 + Math.floor(currentLevel / 2) + Math.floor(eaglesDefeated / 15);
+    }
+
+    function updateLeaderboard() {
+      let board = JSON.parse(localStorage.getItem(LEADERBOARD_KEY) || '[]');
+      board.push({ name: playerName, score: eaglesDefeated });
+      board.sort((a, b) => b.score - a.score);
+      board = board.slice(0, 5);
+      localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(board));
+    }
+
+    function renderLeaderboard() {
+      const board = JSON.parse(localStorage.getItem(LEADERBOARD_KEY) || '[]');
+      if (board.length === 0) {
+        leaderboardList.innerHTML = '<div class="leaderboard-item empty">No scores yet</div>';
+      } else {
+        leaderboardList.innerHTML = board.map((e, i) => 
+          `<div class="leaderboard-item">${i + 1}. ${e.name} — ${e.score}</div>`
+        ).join('');
+      }
+    }
+
+    function startFromHome() {
+      playerName = nameInput.value.trim() || 'Player';
+      homeScreen.classList.add('hidden');
+      gameScreen.classList.add('active');
+      document.body.classList.add('game-active');
+      startGame();
+    }
+
+    playBtn.addEventListener('click', startFromHome);
+    nameInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') startFromHome();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && gameScreen.classList.contains('active') && !gameOverEl.classList.contains('show')) {
+        togglePause();
+      }
+    });
+
+    menuBtn.addEventListener('click', () => togglePause());
+    resumeBtn.addEventListener('click', () => togglePause());
+    pauseHomeBtn.addEventListener('click', () => {
+      gameRunning = false;
+      gamePaused = false;
+      clearInterval(spawnInterval);
+      enemies.forEach(e => e.el.remove());
+      enemies.length = 0;
+      pauseOverlay.classList.remove('show');
+      gameScreen.classList.remove('active');
+      document.body.classList.remove('game-active');
+      homeScreen.classList.remove('hidden');
+      renderLeaderboard();
+    });
+
+    function togglePause() {
+      if (!gameRunning) return;
+      gamePaused = !gamePaused;
+      if (gamePaused) {
+        clearInterval(spawnInterval);
+        pauseOverlay.classList.add('show');
+        document.body.classList.remove('game-active');
+      } else {
+        updateSpawnInterval();
+        pauseOverlay.classList.remove('show');
+        document.body.classList.add('game-active');
+        animate();
+      }
+    }
+
+    homeBtn.addEventListener('click', () => {
+      enemies.forEach(en => en.el.remove());
+      enemies.length = 0;
+      gameOverEl.classList.remove('show');
+      gameScreen.classList.remove('active');
+      document.body.classList.remove('game-active');
+      homeScreen.classList.remove('hidden');
+      renderLeaderboard();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      targetX = e.clientX;
+      targetY = e.clientY;
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!gameRunning) return;
+      const clickX = e.clientX;
+      const clickY = e.clientY;
+      for (let i = enemies.length - 1; i >= 0; i--) {
+        const enemy = enemies[i];
+        const dx = clickX - enemy.x;
+        const dy = clickY - enemy.y;
+        if (Math.hypot(dx, dy) < enemy.radius) {
+          defeatEnemy(i);
+          return;
+        }
+      }
+    });
+
+    function defeatEnemy(index) {
+      const enemy = enemies[index];
+      if (enemy.type === 'cat' && enemy.lives > 1) {
+        enemy.lives--;
+        enemy.el.style.opacity = '0.5';
+        setTimeout(() => { if (enemy.el) enemy.el.style.opacity = '1'; }, 300);
+        enemy.x += (Math.random() - 0.5) * 200;
+        enemy.y += (Math.random() - 0.5) * 200;
+        return;
+      }
+      enemy.el.remove();
+      enemies.splice(index, 1);
+      eaglesDefeated++;
+      currentLevel = getLevel(eaglesDefeated);
+      scoreEl.textContent = 'Defeated: ' + eaglesDefeated;
+      levelEl.textContent = 'Level ' + currentLevel;
+      growSnake();
+      updateSpawnInterval();
+    }
+
+    function updateSpawnInterval() {
+      clearInterval(spawnInterval);
+      const interval = getSpawnInterval();
+      const count = getSpawnCount();
+      spawnInterval = setInterval(() => {
+        for (let i = 0; i < count; i++) spawnEnemy();
+      }, interval);
+    }
+
+    function createSnake() {
+      snakeContainer.innerHTML = '';
+      positions.length = 0;
+      snakeColors = SNAKE_COLORS[Math.floor(Math.random() * SNAKE_COLORS.length)];
+      
+      for (let i = 0; i < segmentCount; i++) {
+        const seg = document.createElement('div');
+        seg.className = 'snake-segment ' + (i === 0 ? 'snake-head' : 'snake-body');
+        const size = i === 0 ? headSize : baseSize;
+        seg.style.width = size + 'px';
+        seg.style.height = size + 'px';
+        seg.style.background = i === 0 ? snakeColors.head : snakeColors.body;
+        seg.style.left = (targetX - size/2) + 'px';
+        seg.style.top = (targetY - size/2) + 'px';
+        snakeContainer.appendChild(seg);
+        positions.push({ x: targetX, y: targetY });
+      }
+    }
+
+    function getSpawnPosition() {
+      const side = Math.floor(Math.random() * 4);
+      const margin = 80;
+      if (side === 0) return { x: Math.random() * window.innerWidth, y: -margin };
+      if (side === 1) return { x: window.innerWidth + margin, y: Math.random() * window.innerHeight };
+      if (side === 2) return { x: Math.random() * window.innerWidth, y: window.innerHeight + margin };
+      return { x: -margin, y: Math.random() * window.innerHeight };
+    }
+
+    function spawnEnemy() {
+      if (!gameRunning) return;
+      const pos = getSpawnPosition();
+      const roll = Math.random();
+      let enemy;
+
+      if (currentLevel >= 6 && roll < 0.15) {
+        const size = 48, radius = 24;
+        const el = document.createElement('div');
+        el.className = 'enemy cat';
+        el.innerHTML = catSvg;
+        el.style.left = pos.x + 'px'; el.style.top = pos.y + 'px';
+        el.style.transform = 'translate(-50%, -50%)';
+        document.body.appendChild(el);
+        enemy = { type: 'cat', x: pos.x, y: pos.y, el, speed: 4 + Math.random(), size, radius, lives: 2, pounceCooldown: 90 };
+      } else if (currentLevel >= 5 && roll < 0.35) {
+        const size = 46, radius = 23;
+        const el = document.createElement('div');
+        el.className = 'enemy fox';
+        el.innerHTML = foxSvg;
+        el.style.left = pos.x + 'px'; el.style.top = pos.y + 'px';
+        el.style.transform = 'translate(-50%, -50%)';
+        document.body.appendChild(el);
+        enemy = { type: 'fox', x: pos.x, y: pos.y, el, speed: 3.5 + Math.random() * 0.8, size, radius, jumpCooldown: 80 };
+      } else if (currentLevel >= 4 && roll < 0.55) {
+        const size = 50, radius = 25;
+        const el = document.createElement('div');
+        el.className = 'enemy wild-pig';
+        el.innerHTML = wildPigSvg;
+        el.style.left = pos.x + 'px'; el.style.top = pos.y + 'px';
+        el.style.transform = 'translate(-50%, -50%)';
+        document.body.appendChild(el);
+        enemy = { type: 'wildPig', x: pos.x, y: pos.y, el, speed: 3 + Math.random() * 0.6, size, radius };
+      } else if (currentLevel >= 3 && roll < 0.75) {
+        const size = 44, radius = 22;
+        const el = document.createElement('div');
+        el.className = 'enemy honey-badger';
+        el.innerHTML = honeyBadgerSvg;
+        el.style.left = pos.x + 'px'; el.style.top = pos.y + 'px';
+        el.style.transform = 'translate(-50%, -50%)';
+        document.body.appendChild(el);
+        enemy = { type: 'honeyBadger', x: pos.x, y: pos.y, el, speed: 2.8 + Math.random() * 0.6, size, radius };
+      } else {
+        const isBig = currentLevel >= 2 ? Math.random() < 0.65 : Math.random() < 0.35;
+        const size = isBig ? 72 : 48;
+        const radius = size / 2;
+        const speed = getEagleSpeed(isBig);
+        const el = document.createElement('div');
+        el.className = 'eagle ' + (isBig ? 'big' : 'normal');
+        el.innerHTML = eagleSvg;
+        el.style.left = pos.x + 'px'; el.style.top = pos.y + 'px';
+        el.style.transform = 'translate(-50%, -50%)';
+        document.body.appendChild(el);
+        enemy = { type: 'eagle', x: pos.x, y: pos.y, el, speed, size, radius };
+      }
+      enemies.push(enemy);
+    }
+
+    function gameOver() {
+      gameRunning = false;
+      clearInterval(spawnInterval);
+      updateLeaderboard();
+      finalScoreEl.textContent = 'Defeated: ' + eaglesDefeated;
+      gameOverEl.classList.add('show');
+    }
+
+    function startGame() {
+      enemies.forEach(e => e.el.remove());
+      enemies.length = 0;
+      eaglesDefeated = 0;
+      currentLevel = 1;
+      segmentCount = 8;
+      gameRunning = true;
+      gamePaused = false;
+      scoreEl.textContent = 'Defeated: 0';
+      levelEl.textContent = 'Level 1';
+      gameOverEl.classList.remove('show');
+      pauseOverlay.classList.remove('show');
+      createSnake();
+      updateSpawnInterval();
+      animate();
+    }
+
+    restartBtn.addEventListener('click', () => {
+      startGame();
+    });
+
+    function growSnake() {
+      if (!gameRunning) return;
+      segmentCount++;
+      const seg = document.createElement('div');
+      seg.className = 'snake-segment snake-body';
+      seg.style.width = baseSize + 'px';
+      seg.style.height = baseSize + 'px';
+      seg.style.background = snakeColors.body;
+      const last = positions[positions.length - 1];
+      seg.style.left = (last.x - baseSize/2) + 'px';
+      seg.style.top = (last.y - baseSize/2) + 'px';
+      snakeContainer.appendChild(seg);
+      positions.push({ x: last.x, y: last.y });
+    }
+
+    function animate() {
+      if (!gameRunning || gamePaused) return;
+
+      cursorX += (targetX - cursorX) * 0.35;
+      cursorY += (targetY - cursorY) * 0.35;
+      
+      cursorDot.style.left = cursorX + 'px';
+      cursorDot.style.top = cursorY + 'px';
+      cursorDot.style.transform = 'translate(-50%, -50%)';
+
+      const segments = snakeContainer.querySelectorAll('.snake-segment');
+      const snakeEase = 0.08;
+      
+      positions[0].x += (targetX - positions[0].x) * snakeEase;
+      positions[0].y += (targetY - positions[0].y) * snakeEase;
+
+      for (let i = 1; i < positions.length; i++) {
+        const prev = positions[i - 1];
+        const curr = positions[i];
+        const dist = Math.hypot(prev.x - curr.x, prev.y - curr.y);
+        const minDist = (i === 1 ? headSize : baseSize) * 0.6;
+        
+        if (dist > minDist) {
+          curr.x += (prev.x - curr.x) * 0.25;
+          curr.y += (prev.y - curr.y) * 0.25;
+        }
+      }
+
+      segments.forEach((seg, i) => {
+        const size = i === 0 ? headSize : baseSize;
+        seg.style.left = (positions[i].x - size/2) + 'px';
+        seg.style.top = (positions[i].y - size/2) + 'px';
+      });
+
+      const snakeHeadX = positions[0].x;
+      const snakeHeadY = positions[0].y;
+
+      for (let i = enemies.length - 1; i >= 0; i--) {
+        const e = enemies[i];
+        const dx = snakeHeadX - e.x;
+        const dy = snakeHeadY - e.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (e.type === 'fox') {
+          e.jumpCooldown = (e.jumpCooldown || 0) - 1;
+          if (e.jumpCooldown <= 0 && dist < 250) {
+            e.x = snakeHeadX + (Math.random() - 0.5) * 120;
+            e.y = snakeHeadY + (Math.random() - 0.5) * 120;
+            e.x = Math.max(30, Math.min(window.innerWidth - 30, e.x));
+            e.y = Math.max(30, Math.min(window.innerHeight - 30, e.y));
+            e.jumpCooldown = 90 + Math.floor(Math.random() * 60);
+          }
+        }
+
+        if (e.type === 'cat') {
+          e.pounceCooldown = (e.pounceCooldown || 0) - 1;
+          const pouncing = e.pouncing;
+          if (pouncing) {
+            e.x += (snakeHeadX - e.x) * 0.35;
+            e.y += (snakeHeadY - e.y) * 0.35;
+            e.pounceFrames--;
+            if (e.pounceFrames <= 0) e.pouncing = false;
+          } else if (e.pounceCooldown <= 0 && dist < 200) {
+            e.pouncing = true;
+            e.pounceFrames = 18;
+            e.pounceCooldown = 100;
+          } else if (dist > 5) {
+            const zigzag = dist < 150 ? Math.sin(Date.now() * 0.01) * 0.5 : 0;
+            const perpX = -dy / dist, perpY = dx / dist;
+            e.x += (dx / dist) * e.speed + perpX * zigzag;
+            e.y += (dy / dist) * e.speed + perpY * zigzag;
+          }
+          e.el.style.opacity = dist < 120 ? '0.6' : '1';
+        } else if (dist > 5) {
+          const speed = e.speed;
+          e.x += (dx / dist) * speed;
+          e.y += (dy / dist) * speed;
+        }
+
+        e.el.style.left = e.x + 'px';
+        e.el.style.top = e.y + 'px';
+        const angle = e.type === 'eagle' ? Math.atan2(dy, dx) * 180 / Math.PI : 0;
+        e.el.style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
+
+        let hitBody = false;
+        for (let j = 1; j < positions.length; j++) {
+          const hitDist = e.radius * 0.75 + baseSize / 2;
+          if (Math.hypot(e.x - positions[j].x, e.y - positions[j].y) < hitDist) {
+            hitBody = true;
+            break;
+          }
+        }
+        if (hitBody) {
+          defeatEnemy(i);
+          continue;
+        }
+
+        const headHitDist = e.radius * 0.75 + headSize / 2;
+        if (Math.hypot(e.x - snakeHeadX, e.y - snakeHeadY) < headHitDist) {
+          gameOver();
+          return;
+        }
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    renderLeaderboard();
+  </script>
+</body>
+</html>
